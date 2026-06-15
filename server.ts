@@ -33,23 +33,28 @@ const cleanEnvVar = (val: string | undefined): string => {
   return clean;
 };
 
-// Database configuration
+// Database configuration with explicit, ultra-responsive timeout rules to prevent Vercel Serverless Gateway Timeouts
 const dbConfig = {
   server: cleanEnvVar(process.env.DB_SERVER) || "dataepis.uandina.pe",
   port: parseInt(cleanEnvVar(process.env.DB_PORT) || "49157", 10),
   user: cleanEnvVar(process.env.DB_USER) || "ComandoCMD",
   password: cleanEnvVar(process.env.DB_PASSWORD) || "Comando132",
   database: cleanEnvVar(process.env.DB_NAME) || "seguimiento_carga_ancha",
+  connectionTimeout: 2000, // 2 seconds fast pool connection timeout
+  requestTimeout: 2000,    // 2 seconds query execution timeout
   options: {
     encrypt: false,
     trustServerCertificate: true,
-    connectTimeout: 3500
+    connectTimeout: 2000   // 2 seconds tedious socket connect timeout
   }
 };
 
 let pool: mssql.ConnectionPool | null = null;
 let isLocalFallback = false;
 let connectionErrorDetails = "";
+// Fast cache for Serverless unreachability to prevent TCP connection hangs on every stateless execution
+let lastConnectAttempt = 0;
+let isDbUnreachable = false;
 
 // Robust Fallback In-Memory Storage
 let mockPersonal = [
@@ -170,12 +175,22 @@ async function getDbConnection(): Promise<mssql.ConnectionPool | null> {
     return null;
   }
 
+  // If the database has been detected as unreachable recently, bypass connection retry instantly
+  // to avoid blocking user tasks with long socket timeouts on stateless Serverless calls.
+  const now = Date.now();
+  if (isDbUnreachable && now - lastConnectAttempt < 30000) {
+    isLocalFallback = true;
+    return null;
+  }
+
+  lastConnectAttempt = now;
   try {
     console.log(`[Database] Attempting connection to ${dbConfig.server}:${dbConfig.port} (database: ${dbConfig.database}, user: ${dbConfig.user}) with encrypt=false...`);
     const newPool = new mssql.ConnectionPool(dbConfig);
     await newPool.connect();
     pool = newPool;
     isLocalFallback = false;
+    isDbUnreachable = false;
     connectionErrorDetails = "";
     await runDbMigrations(pool);
     return pool;
@@ -183,6 +198,7 @@ async function getDbConnection(): Promise<mssql.ConnectionPool | null> {
     console.log("[Database] Connection to SQL Server failed. Running in robust Fallback mode. Details: " + err.message);
     pool = null;
     isLocalFallback = true;
+    isDbUnreachable = true;
     connectionErrorDetails = "Error de conexión SQL Server: " + err.message;
     return null;
   }
