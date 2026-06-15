@@ -22,9 +22,9 @@ export default function DriverPortal({
   onLogout,
   syncWithBackendData,
 }: DriverPortalProps) {
-  // Find trips assigned to this conductor
+  // Find trips assigned to this conductor safely
   const myTrips = monitoreos.filter(
-    (m) => m.conductor.trim().toLowerCase() === currentUser.nombre_completo.trim().toLowerCase()
+    (m) => m && m.conductor && typeof m.conductor === 'string' && m.conductor.trim().toLowerCase() === currentUser.nombre_completo.trim().toLowerCase()
   );
 
   // If none matches literally, check if we can fall back to the most recent monitoring matching or simply all

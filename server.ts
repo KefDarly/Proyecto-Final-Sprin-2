@@ -3,13 +3,15 @@ import path from "path";
 import { createServer as createViteServer } from "vite";
 import mssql from "mssql";
 import dotenv from "dotenv";
+import cors from "cors";
 
 dotenv.config();
 
 const app = express();
 const PORT = 3000;
 
-// Express Body Parsers
+// Enable CORS and Express body parsers
+app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 

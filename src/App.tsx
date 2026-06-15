@@ -7,6 +7,7 @@ import SettingsAndRolesView from './components/SettingsAndRolesView';
 import IncidentsListView from './components/IncidentsListView';
 import DriverPortal from './components/DriverPortal';
 import { Usuario, Vehiculo, Monitoreo, Incidencia } from './types';
+import { API_BASE_URL } from './apiConfig';
 
 export default function App() {
   // Session Access State
@@ -30,31 +31,31 @@ export default function App() {
   // Fetch all database records upon session mount
   const syncWithBackendData = async () => {
     try {
-      const dbStatusRes = await fetch('/api/db-status');
+      const dbStatusRes = await fetch(`${API_BASE_URL}/api/db-status`);
       if (dbStatusRes.ok) {
         const statusData = await dbStatusRes.json();
         setDbStatus(statusData);
       }
 
-      const personalRes = await fetch('/api/personal');
+      const personalRes = await fetch(`${API_BASE_URL}/api/personal`);
       if (personalRes.ok) {
         const resJson = await personalRes.json();
         setUsuarios(resJson.data || []);
       }
 
-      const vehiculosRes = await fetch('/api/vehiculos');
+      const vehiculosRes = await fetch(`${API_BASE_URL}/api/vehiculos`);
       if (vehiculosRes.ok) {
         const resJson = await vehiculosRes.json();
         setVehiculos(resJson.data || []);
       }
 
-      const monitoreosRes = await fetch('/api/monitoreos');
+      const monitoreosRes = await fetch(`${API_BASE_URL}/api/monitoreos`);
       if (monitoreosRes.ok) {
         const resJson = await monitoreosRes.json();
         setMonitoreos(resJson.data || []);
       }
 
-      const incidenciasRes = await fetch('/api/incidencias');
+      const incidenciasRes = await fetch(`${API_BASE_URL}/api/incidencias`);
       if (incidenciasRes.ok) {
         const resJson = await incidenciasRes.json();
         setIncidencias(resJson.data || []);
@@ -86,7 +87,7 @@ export default function App() {
   // Handle operations handlers - 1. Create personal role
   const handleAddUsuario = async (userData: any): Promise<boolean> => {
     try {
-      const res = await fetch('/api/personal', {
+      const res = await fetch(`${API_BASE_URL}/api/personal`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(userData)
@@ -105,7 +106,7 @@ export default function App() {
   // 2. Update personal role
   const handleUpdateUsuario = async (id: number, userData: any): Promise<boolean> => {
     try {
-      const res = await fetch(`/api/personal/${id}`, {
+      const res = await fetch(`${API_BASE_URL}/api/personal/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(userData)
@@ -124,7 +125,7 @@ export default function App() {
   // 3. Delete personal role
   const handleDeleteUsuario = async (id: number): Promise<boolean> => {
     try {
-      const res = await fetch(`/api/personal/${id}`, {
+      const res = await fetch(`${API_BASE_URL}/api/personal/${id}`, {
         method: 'DELETE'
       });
       if (res.ok) {
@@ -141,7 +142,7 @@ export default function App() {
   // 4. Create fleet vehicle
   const handleAddVehicle = async (vehicleData: any): Promise<boolean> => {
     try {
-      const res = await fetch('/api/vehiculos', {
+      const res = await fetch(`${API_BASE_URL}/api/vehiculos`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(vehicleData)
@@ -160,7 +161,7 @@ export default function App() {
   // 5. Schedule maintenance correctives
   const handleScheduleMaintenance = async (placa: string, fecha: string, estado: string): Promise<boolean> => {
     try {
-      const res = await fetch(`/api/vehiculos/${placa}/mantenimiento`, {
+      const res = await fetch(`${API_BASE_URL}/api/vehiculos/${placa}/mantenimiento`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ fecha_mantenimiento: fecha, estado_mantenimiento: estado })
@@ -179,7 +180,7 @@ export default function App() {
   // 6. Create monitoring router
   const handleAddMonitoreo = async (monitoreoData: any): Promise<boolean> => {
     try {
-      const res = await fetch('/api/monitoreos', {
+      const res = await fetch(`${API_BASE_URL}/api/monitoreos`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(monitoreoData)
@@ -198,7 +199,7 @@ export default function App() {
   // 7. Update status of active route monitorings (e.g. resolve or trigger incident status)
   const handleUpdateEstado = async (id: string, estado: 'EN RUTA' | 'INCIDENCIA' | 'COMPLETADO'): Promise<void> => {
     try {
-      const res = await fetch(`/api/monitoreos/${id}/estado`, {
+      const res = await fetch(`${API_BASE_URL}/api/monitoreos/${id}/estado`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ estado })
@@ -219,7 +220,7 @@ export default function App() {
   // 8. Report raw incidence log
   const handleReportIncident = async (incidentData: any): Promise<boolean> => {
     try {
-      const res = await fetch('/api/incidencias', {
+      const res = await fetch(`${API_BASE_URL}/api/incidencias`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(incidentData)
@@ -228,7 +229,7 @@ export default function App() {
         const result = await res.json();
         setIncidencias(result.data);
         // Sync monitoring state changes from backend
-        const monitoreosRefresh = await fetch('/api/monitoreos');
+        const monitoreosRefresh = await fetch(`${API_BASE_URL}/api/monitoreos`);
         if (monitoreosRefresh.ok) {
           const mJson = await monitoreosRefresh.json();
           setMonitoreos(mJson.data);
