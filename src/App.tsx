@@ -107,54 +107,69 @@ export default function App() {
     }
   }, [currentUser]);
 
-  // Handle operations handlers - 1. Create personal role directly in local state and LocalStorage
+  // Handle operations handlers - 1. Create personal role by saving directly to SQL Server backend
   const handleAddUsuario = async (userData: any): Promise<boolean> => {
     try {
-      const newUser: Usuario = {
-        id: Date.now(), // Assign a unique ID locally
-        nombre_completo: userData.nombre_completo,
-        correo: userData.correo,
-        documento: userData.documento,
-        telefono: userData.telefono,
-        rol: userData.rol,
-        contrasena: userData.contrasena || '123456'
-      };
-      
-      const updatedList = [...usuarios, newUser];
-      setUsuarios(updatedList);
-      localStorage.setItem('local_usuarios', JSON.stringify(updatedList));
-      console.log("[Registrar] Guardado localmente en LocalStorage con éxito:", newUser);
-      return true;
+      const res = await fetch(getApiUrl('/api/personal'), {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify(userData)
+      });
+      if (res.ok) {
+        const result = await res.json();
+        if (result.success && result.data) {
+          setUsuarios(result.data);
+          localStorage.setItem('local_usuarios', JSON.stringify(result.data));
+          return true;
+        }
+      }
     } catch (e: any) {
-      console.error("[Registrar] Error al guardar localmente:", e);
+      console.error("[Registrar] Error al guardar en SQL Server:", e);
     }
     return false;
   };
 
-  // 2. Update personal role directly in local state and LocalStorage
+  // 2. Update personal role by saving directly to SQL Server backend
   const handleUpdateUsuario = async (id: number, userData: any): Promise<boolean> => {
     try {
-      const updatedList = usuarios.map(u => u.id === id ? { ...u, ...userData } : u);
-      setUsuarios(updatedList);
-      localStorage.setItem('local_usuarios', JSON.stringify(updatedList));
-      console.log("[Actualizar] Editado localmente en LocalStorage con éxito:", id, userData);
-      return true;
+      const res = await fetch(getApiUrl(`/api/personal/${id}`), {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(userData)
+      });
+      if (res.ok) {
+        const result = await res.json();
+        if (result.success && result.data) {
+          setUsuarios(result.data);
+          localStorage.setItem('local_usuarios', JSON.stringify(result.data));
+          return true;
+        }
+      }
     } catch (e) {
-      console.error(e);
+      console.error("[Actualizar] Error al actualizar en SQL Server:", e);
     }
     return false;
   };
 
-  // 3. Delete personal role directly in local state and LocalStorage
+  // 3. Delete personal role by deleting directly from SQL Server backend
   const handleDeleteUsuario = async (id: number): Promise<boolean> => {
     try {
-      const updatedList = usuarios.filter(u => u.id !== id);
-      setUsuarios(updatedList);
-      localStorage.setItem('local_usuarios', JSON.stringify(updatedList));
-      console.log("[Eliminar] Borrado localmente de LocalStorage con éxito:", id);
-      return true;
+      const res = await fetch(getApiUrl(`/api/personal/${id}`), {
+        method: 'DELETE'
+      });
+      if (res.ok) {
+        const result = await res.json();
+        if (result.success && result.data) {
+          setUsuarios(result.data);
+          localStorage.setItem('local_usuarios', JSON.stringify(result.data));
+          return true;
+        }
+      }
     } catch (e) {
-      console.error(e);
+      console.error("[Eliminar] Error al borrar de SQL Server:", e);
     }
     return false;
   };
@@ -509,7 +524,7 @@ export default function App() {
           <div className="flex gap-4">
             <span>SISTEMA PETRO MAPI: <span className="text-green-400">ÓPTIMO</span></span>
             <span className="md:inline hidden">
-              SERVIDOR: {import.meta.env.VITE_API_BASE_URL ? `Vercel Serverless (Proxy SQL Server: dataespis.uandina.pe)` : 'CONEXIÓN DIRECTA EN LÍNEA'}
+              SERVIDOR: {dbStatus.connected ? `SQL Server Conectado: ${dbStatus.server}` : 'CONEXIÓN EN FALLBACK LOCAL (MEMORIA)'}
             </span>
           </div>
           <div>

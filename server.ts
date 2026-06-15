@@ -187,6 +187,15 @@ async function getDbConnection(): Promise<mssql.ConnectionPool | null> {
 }
 
 // Attempt immediate connection async
+import dns from "dns";
+dns.lookup("dataepis.uandina.pe", (err, address) => {
+  if (err) {
+    console.error("[Diagnostics] DNS Lookup for dataepis.uandina.pe failed:", err.message);
+  } else {
+    console.log(`[Diagnostics] DNS Lookup for dataepis.uandina.pe succeeded! IP: ${address}`);
+  }
+});
+
 getDbConnection();
 
 // Status Check Endpoint (provides the user with visual indicators whether remote SQL Server is linked or in fallback Mode)
