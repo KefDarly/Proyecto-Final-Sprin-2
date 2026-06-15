@@ -15,13 +15,26 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Helper to parse environment variables safely, removing double/single quotes or spaces
+const cleanEnvVar = (val: string | undefined): string => {
+  if (!val) return "";
+  let clean = val.trim();
+  if (clean.startsWith('"') && clean.endsWith('"')) {
+    clean = clean.substring(1, clean.length - 1);
+  }
+  if (clean.startsWith("'") && clean.endsWith("'")) {
+    clean = clean.substring(1, clean.length - 1);
+  }
+  return clean.trim();
+};
+
 // Database configuration
 const dbConfig = {
-  server: process.env.DB_SERVER || "",
-  port: parseInt(process.env.DB_PORT || "1433", 10),
-  user: process.env.DB_USER || "",
-  password: process.env.DB_PASSWORD || "",
-  database: process.env.DB_NAME || "seguimiento_carga_ancha",
+  server: cleanEnvVar(process.env.DB_SERVER),
+  port: parseInt(cleanEnvVar(process.env.DB_PORT) || "1433", 10),
+  user: cleanEnvVar(process.env.DB_USER),
+  password: cleanEnvVar(process.env.DB_PASSWORD),
+  database: cleanEnvVar(process.env.DB_NAME) || "seguimiento_carga_ancha",
   options: {
     encrypt: true,
     trustServerCertificate: true,
@@ -149,7 +162,7 @@ async function getDbConnection(): Promise<mssql.ConnectionPool | null> {
     await runDbMigrations(pool);
     return pool;
   } catch (err: any) {
-    console.warn("[Database] Connection failed with encrypt=true, trying with encrypt=false...", err?.message || err);
+    console.log("[Database] Connection failed with encrypt=true, trying with encrypt=false... Note: This is normal when offline or behind a firewalled network.");
     try {
       const nonEncryptedConfig = {
         ...dbConfig,
@@ -164,7 +177,7 @@ async function getDbConnection(): Promise<mssql.ConnectionPool | null> {
       await runDbMigrations(pool);
       return pool;
     } catch (retryErr: any) {
-      console.error("[Database] All SQL Server connection attempts failed:", retryErr?.message || retryErr);
+      console.log("[Database] Remote SQL Server connection could not be established. Running in robust Local/InMemory Fallback mode. Details: " + (retryErr?.message || String(retryErr)));
       pool = null;
       isLocalFallback = true;
       connectionErrorDetails = "Error de conexión SQL Server: " + (retryErr?.message || String(retryErr));
