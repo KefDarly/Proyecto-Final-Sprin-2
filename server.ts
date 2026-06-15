@@ -5,7 +5,7 @@ import mssql from "mssql";
 import dotenv from "dotenv";
 import cors from "cors";
 
-dotenv.config();
+dotenv.config({ override: true });
 
 const app = express();
 const PORT = 3000;

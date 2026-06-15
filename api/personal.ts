@@ -1,7 +1,7 @@
 import mssql from "mssql";
 import dotenv from "dotenv";
 
-dotenv.config();
+dotenv.config({ override: true });
 
 // Helper to parse environment variables safely, removing double/single quotes or spaces
 const cleanEnvVar = (val: string | undefined): string => {
