@@ -108,7 +108,7 @@ export default function App() {
   }, [currentUser]);
 
   // Handle operations handlers - 1. Create personal role by saving directly to SQL Server backend
-  const handleAddUsuario = async (userData: any): Promise<boolean> => {
+  const handleAddUsuario = async (userData: any): Promise<boolean | { success: boolean; message?: string }> => {
     try {
       const res = await fetch(getApiUrl('/api/personal'), {
         method: 'POST',
@@ -118,40 +118,42 @@ export default function App() {
         },
         body: JSON.stringify(userData)
       });
+      const result = await res.json().catch(() => ({}));
       if (res.ok) {
-        const result = await res.json();
         if (result.success && result.data) {
           setUsuarios(result.data);
           localStorage.setItem('local_usuarios', JSON.stringify(result.data));
           return true;
         }
       }
+      return { success: false, message: result.message || `Error en el servidor al registrar (Código ${res.status})` };
     } catch (e: any) {
       console.error("[Registrar] Error al guardar en SQL Server:", e);
+      return { success: false, message: `Error de conexión: ${e.message}` };
     }
-    return false;
   };
 
   // 2. Update personal role by saving directly to SQL Server backend
-  const handleUpdateUsuario = async (id: number, userData: any): Promise<boolean> => {
+  const handleUpdateUsuario = async (id: number, userData: any): Promise<boolean | { success: boolean; message?: string }> => {
     try {
       const res = await fetch(getApiUrl(`/api/personal/${id}`), {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(userData)
       });
+      const result = await res.json().catch(() => ({}));
       if (res.ok) {
-        const result = await res.json();
         if (result.success && result.data) {
           setUsuarios(result.data);
           localStorage.setItem('local_usuarios', JSON.stringify(result.data));
           return true;
         }
       }
-    } catch (e) {
+      return { success: false, message: result.message || `Error en el servidor al actualizar (Código ${res.status})` };
+    } catch (e: any) {
       console.error("[Actualizar] Error al actualizar en SQL Server:", e);
+      return { success: false, message: `Error de conexión: ${e.message}` };
     }
-    return false;
   };
 
   // 3. Delete personal role by deleting directly from SQL Server backend

@@ -3,8 +3,8 @@ import { Usuario } from '../types';
 
 interface SettingsAndRolesViewProps {
   usuarios: Usuario[];
-  onAddUsuario: (userData: any) => Promise<boolean>;
-  onUpdateUsuario: (id: number, userData: any) => Promise<boolean>;
+  onAddUsuario: (userData: any) => Promise<boolean | { success: boolean; message?: string }>;
+  onUpdateUsuario: (id: number, userData: any) => Promise<boolean | { success: boolean; message?: string }>;
   onDeleteUsuario: (id: number) => Promise<boolean>;
   currentUser: { id: number; nombre_completo: string; correo: string; rol: string } | null;
 }
@@ -68,7 +68,7 @@ export default function SettingsAndRolesView({
 
     if (editingId !== null) {
       // Logic for editing existing personal user
-      const success = await onUpdateUsuario(editingId, {
+      const result = await onUpdateUsuario(editingId, {
         nombre_completo: nombreCompleto,
         correo,
         documento,
@@ -78,13 +78,18 @@ export default function SettingsAndRolesView({
       });
       setLoading(false);
       
-      if (success) {
+      const isSuccess = typeof result === 'boolean' ? result : (result?.success || false);
+      const errorMsg = typeof result === 'object' && result?.message 
+        ? result.message 
+        : 'No se pudo actualizar los datos. Verifique si el correo ya existe.';
+
+      if (isSuccess) {
         setFormSuccess('¡Datos del personal actualizados correctamente!');
         setTimeout(() => {
           resetFormState();
         }, 1200);
       } else {
-        setFormError('No se pudo actualizar los datos. Verifique si el correo ya existe.');
+        setFormError(errorMsg);
       }
     } else {
       // Logic for creating new operational role
@@ -94,7 +99,7 @@ export default function SettingsAndRolesView({
         return;
       }
 
-      const success = await onAddUsuario({
+      const result = await onAddUsuario({
         nombre_completo: nombreCompleto,
         correo,
         documento,
@@ -104,13 +109,18 @@ export default function SettingsAndRolesView({
       });
       setLoading(false);
 
-      if (success) {
+      const isSuccess = typeof result === 'boolean' ? result : (result?.success || false);
+      const errorMsg = typeof result === 'object' && result?.message 
+        ? result.message 
+        : 'No se pudo registrar el personal. Verifique si el correo ya existe.';
+
+      if (isSuccess) {
         setFormSuccess('¡Personal registrado exitosamente en el sistema!');
         setTimeout(() => {
           resetFormState();
         }, 1200);
       } else {
-        setFormError('No se pudo registrar el personal. Verifique si el correo ya existe.');
+        setFormError(errorMsg);
       }
     }
   };
