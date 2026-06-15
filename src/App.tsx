@@ -49,20 +49,26 @@ export default function App() {
         const resJson = await personalRes.json();
         const serverUsers = resJson.data || [];
         
-        try {
-          const stored = localStorage.getItem('local_usuarios');
-          const localUsers: Usuario[] = stored ? JSON.parse(stored) : [];
-          
-          // Merge lists cleanly based on email as the differentiator
-          const mergedMap = new Map<string, Usuario>();
-          serverUsers.forEach((u: Usuario) => mergedMap.set(u.correo, u));
-          localUsers.forEach((u: Usuario) => mergedMap.set(u.correo, u));
-          
-          const finalUsers = Array.from(mergedMap.values());
-          setUsuarios(finalUsers);
-          localStorage.setItem('local_usuarios', JSON.stringify(finalUsers));
-        } catch {
+        if (resJson.fallback) {
+          try {
+            const stored = localStorage.getItem('local_usuarios');
+            const localUsers: Usuario[] = stored ? JSON.parse(stored) : [];
+            
+            // Merge lists cleanly, with server's fallback state overwriting stale local states
+            const mergedMap = new Map<string, Usuario>();
+            localUsers.forEach((u: Usuario) => mergedMap.set(u.correo, u));
+            serverUsers.forEach((u: Usuario) => mergedMap.set(u.correo, u));
+            
+            const finalUsers = Array.from(mergedMap.values());
+            setUsuarios(finalUsers);
+            localStorage.setItem('local_usuarios', JSON.stringify(finalUsers));
+          } catch {
+            setUsuarios(serverUsers);
+          }
+        } else {
+          // Connected to SQL Server - trust the server 100% as absolute source of truth
           setUsuarios(serverUsers);
+          localStorage.setItem('local_usuarios', JSON.stringify(serverUsers));
         }
       }
 

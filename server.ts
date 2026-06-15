@@ -30,10 +30,10 @@ const cleanEnvVar = (val: string | undefined): string => {
 
 // Database configuration
 const dbConfig = {
-  server: cleanEnvVar(process.env.DB_SERVER),
-  port: parseInt(cleanEnvVar(process.env.DB_PORT) || "1433", 10),
-  user: cleanEnvVar(process.env.DB_USER),
-  password: cleanEnvVar(process.env.DB_PASSWORD),
+  server: cleanEnvVar(process.env.DB_SERVER) || "dataepis.uandina.pe",
+  port: parseInt(cleanEnvVar(process.env.DB_PORT) || "49157", 10),
+  user: cleanEnvVar(process.env.DB_USER) || "ComandoCMD",
+  password: cleanEnvVar(process.env.DB_PASSWORD) || "Comando132",
   database: cleanEnvVar(process.env.DB_NAME) || "seguimiento_carga_ancha",
   options: {
     encrypt: true,
