@@ -27,8 +27,21 @@ async function getDbConnection(): Promise<mssql.ConnectionPool | null> {
     pool = await mssql.connect(dbConfig);
     return pool;
   } catch (err) {
-    console.error("Vercel Function fail connecting to SQL Server:", err);
-    return null;
+    console.warn("Vercel Function fail connecting using encrypt=true, trying encrypt=false...", err);
+    try {
+      const nonEncryptedConfig = {
+        ...dbConfig,
+        options: {
+          ...dbConfig.options,
+          encrypt: false
+        }
+      };
+      pool = await mssql.connect(nonEncryptedConfig);
+      return pool;
+    } catch (retryErr) {
+      console.error("Vercel Function completely failed connecting to SQL Server:", retryErr);
+      return null;
+    }
   }
 }
 

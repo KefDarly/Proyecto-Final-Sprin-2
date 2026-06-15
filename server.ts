@@ -25,7 +25,7 @@ const dbConfig = {
   options: {
     encrypt: true,
     trustServerCertificate: true,
-    connectTimeout: 4000
+    connectTimeout: 8000
   }
 };
 
@@ -142,17 +142,34 @@ async function getDbConnection(): Promise<mssql.ConnectionPool | null> {
     return null;
   }
   try {
+    console.log(`[Database] Attempting connection to ${dbConfig.server}:${dbConfig.port} (database: ${dbConfig.database}, user: ${dbConfig.user}) with encrypt=true...`);
     pool = await mssql.connect(dbConfig);
     isLocalFallback = false;
     connectionErrorDetails = "";
     await runDbMigrations(pool);
     return pool;
   } catch (err: any) {
-    console.error("Fallo al conectar a SQL Server:", err?.message || err);
-    pool = null;
-    isLocalFallback = true;
-    connectionErrorDetails = "Error de conexión SQL Server: " + (err?.message || String(err));
-    return null;
+    console.warn("[Database] Connection failed with encrypt=true, trying with encrypt=false...", err?.message || err);
+    try {
+      const nonEncryptedConfig = {
+        ...dbConfig,
+        options: {
+          ...dbConfig.options,
+          encrypt: false
+        }
+      };
+      pool = await mssql.connect(nonEncryptedConfig);
+      isLocalFallback = false;
+      connectionErrorDetails = "";
+      await runDbMigrations(pool);
+      return pool;
+    } catch (retryErr: any) {
+      console.error("[Database] All SQL Server connection attempts failed:", retryErr?.message || retryErr);
+      pool = null;
+      isLocalFallback = true;
+      connectionErrorDetails = "Error de conexión SQL Server: " + (retryErr?.message || String(retryErr));
+      return null;
+    }
   }
 }
 
