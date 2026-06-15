@@ -1,0 +1,6 @@
+{
+  "name": "Sistema de Control Logístico",
+  "description": "Sistema integral de control de flota pesada, asignación de conductores de ruta, monitoreo en tiempo real y registro de incidencias con persistencia en SQL Server.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
