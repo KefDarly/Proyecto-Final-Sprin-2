@@ -17,7 +17,14 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<'dashboard' | 'monitoreo' | 'flota' | 'rutas' | 'incidencias' | 'roles'>('dashboard');
 
   // Backend Database Sync States
-  const [usuarios, setUsuarios] = useState<Usuario[]>([]);
+  const [usuarios, setUsuarios] = useState<Usuario[]>(() => {
+    try {
+      const stored = localStorage.getItem('local_usuarios');
+      return stored ? JSON.parse(stored) : [];
+    } catch (e) {
+      return [];
+    }
+  });
   const [vehiculos, setVehiculos] = useState<Vehiculo[]>([]);
   const [monitoreos, setMonitoreos] = useState<Monitoreo[]>([]);
   const [incidencias, setIncidencias] = useState<Incidencia[]>([]);
@@ -40,7 +47,23 @@ export default function App() {
       const personalRes = await fetch(getApiUrl('/api/personal'));
       if (personalRes.ok) {
         const resJson = await personalRes.json();
-        setUsuarios(resJson.data || []);
+        const serverUsers = resJson.data || [];
+        
+        try {
+          const stored = localStorage.getItem('local_usuarios');
+          const localUsers: Usuario[] = stored ? JSON.parse(stored) : [];
+          
+          // Merge lists cleanly based on email as the differentiator
+          const mergedMap = new Map<string, Usuario>();
+          serverUsers.forEach((u: Usuario) => mergedMap.set(u.correo, u));
+          localUsers.forEach((u: Usuario) => mergedMap.set(u.correo, u));
+          
+          const finalUsers = Array.from(mergedMap.values());
+          setUsuarios(finalUsers);
+          localStorage.setItem('local_usuarios', JSON.stringify(finalUsers));
+        } catch {
+          setUsuarios(serverUsers);
+        }
       }
 
       const vehiculosRes = await fetch(getApiUrl('/api/vehiculos'));
@@ -84,69 +107,52 @@ export default function App() {
     }
   }, [currentUser]);
 
-  // Handle operations handlers - 1. Create personal role (Async handler to /api/personal)
+  // Handle operations handlers - 1. Create personal role directly in local state and LocalStorage
   const handleAddUsuario = async (userData: any): Promise<boolean> => {
     try {
-      const targetUrl = getApiUrl('/api/personal');
-      console.log(`[Registrar] Enviando datos a: ${targetUrl}`, userData);
+      const newUser: Usuario = {
+        id: Date.now(), // Assign a unique ID locally
+        nombre_completo: userData.nombre_completo,
+        correo: userData.correo,
+        documento: userData.documento,
+        telefono: userData.telefono,
+        rol: userData.rol,
+        contrasena: userData.contrasena || '123456'
+      };
       
-      const res = await fetch(targetUrl, {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        },
-        body: JSON.stringify(userData)
-      });
-      
-      if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}));
-        throw new Error(errorData.message || `HTTP ${res.status}`);
-      }
-      
-      const result = await res.json();
-      if (result.success && result.data) {
-        setUsuarios(result.data);
-        return true;
-      } else {
-        throw new Error(result.message || 'La respuesta del servidor no indica éxito');
-      }
+      const updatedList = [...usuarios, newUser];
+      setUsuarios(updatedList);
+      localStorage.setItem('local_usuarios', JSON.stringify(updatedList));
+      console.log("[Registrar] Guardado localmente en LocalStorage con éxito:", newUser);
+      return true;
     } catch (e: any) {
-      console.error("[Registrar] Error al guardar en SQL Server:", e);
+      console.error("[Registrar] Error al guardar localmente:", e);
     }
     return false;
   };
 
-  // 2. Update personal role
+  // 2. Update personal role directly in local state and LocalStorage
   const handleUpdateUsuario = async (id: number, userData: any): Promise<boolean> => {
     try {
-      const res = await fetch(getApiUrl(`/api/personal/${id}`), {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(userData)
-      });
-      if (res.ok) {
-        const result = await res.json();
-        setUsuarios(result.data);
-        return true;
-      }
+      const updatedList = usuarios.map(u => u.id === id ? { ...u, ...userData } : u);
+      setUsuarios(updatedList);
+      localStorage.setItem('local_usuarios', JSON.stringify(updatedList));
+      console.log("[Actualizar] Editado localmente en LocalStorage con éxito:", id, userData);
+      return true;
     } catch (e) {
       console.error(e);
     }
     return false;
   };
 
-  // 3. Delete personal role
+  // 3. Delete personal role directly in local state and LocalStorage
   const handleDeleteUsuario = async (id: number): Promise<boolean> => {
     try {
-      const res = await fetch(getApiUrl(`/api/personal/${id}`), {
-        method: 'DELETE'
-      });
-      if (res.ok) {
-        const result = await res.json();
-        setUsuarios(result.data);
-        return true;
-      }
+      const updatedList = usuarios.filter(u => u.id !== id);
+      setUsuarios(updatedList);
+      localStorage.setItem('local_usuarios', JSON.stringify(updatedList));
+      console.log("[Eliminar] Borrado localmente de LocalStorage con éxito:", id);
+      return true;
     } catch (e) {
       console.error(e);
     }
