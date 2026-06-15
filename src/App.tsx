@@ -84,21 +84,35 @@ export default function App() {
     }
   }, [currentUser]);
 
-  // Handle operations handlers - 1. Create personal role
+  // Handle operations handlers - 1. Create personal role (Async handler to /api/personal)
   const handleAddUsuario = async (userData: any): Promise<boolean> => {
     try {
-      const res = await fetch(getApiUrl('/api/personal'), {
+      const targetUrl = getApiUrl('/api/personal');
+      console.log(`[Registrar] Enviando datos a: ${targetUrl}`, userData);
+      
+      const res = await fetch(targetUrl, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
         body: JSON.stringify(userData)
       });
-      if (res.ok) {
-        const result = await res.json();
+      
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.message || `HTTP ${res.status}`);
+      }
+      
+      const result = await res.json();
+      if (result.success && result.data) {
         setUsuarios(result.data);
         return true;
+      } else {
+        throw new Error(result.message || 'La respuesta del servidor no indica éxito');
       }
-    } catch (e) {
-      console.error(e);
+    } catch (e: any) {
+      console.error("[Registrar] Error al guardar en SQL Server:", e);
     }
     return false;
   };
@@ -489,7 +503,7 @@ export default function App() {
           <div className="flex gap-4">
             <span>SISTEMA PETRO MAPI: <span className="text-green-400">ÓPTIMO</span></span>
             <span className="md:inline hidden">
-              SERVIDOR: {API_BASE_URL.trim() ? `PROXY EN LÍNEA: ${API_BASE_URL}` : 'LOCAL DEV (PUERTO 3000)'}
+              SERVIDOR: {import.meta.env.VITE_API_BASE_URL ? `Vercel Serverless (Proxy SQL Server: dataespis.uandina.pe)` : 'CONEXIÓN DIRECTA EN LÍNEA'}
             </span>
           </div>
           <div>
