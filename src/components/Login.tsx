@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { API_BASE_URL } from '../apiConfig';
+import { getApiUrl } from '../apiConfig';
 
 interface LoginProps {
   onLoginSuccess: (user: { id: number; nombre_completo: string; correo: string; rol: string }) => void;
@@ -22,7 +22,7 @@ export default function Login({ onLoginSuccess }: LoginProps) {
     setErrorMsg('');
 
     try {
-      const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
+      const response = await fetch(getApiUrl('/api/auth/login'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ correo, contrasena })
