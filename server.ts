@@ -25,7 +25,12 @@ const cleanEnvVar = (val: string | undefined): string => {
   if (clean.startsWith("'") && clean.endsWith("'")) {
     clean = clean.substring(1, clean.length - 1);
   }
-  return clean.trim();
+  clean = clean.trim();
+  // Auto-correct potential user typo on Vercel configuration
+  if (clean === "dataespis.uandina.pe") {
+    clean = "dataepis.uandina.pe";
+  }
+  return clean;
 };
 
 // Database configuration
@@ -36,9 +41,9 @@ const dbConfig = {
   password: cleanEnvVar(process.env.DB_PASSWORD) || "Comando132",
   database: cleanEnvVar(process.env.DB_NAME) || "seguimiento_carga_ancha",
   options: {
-    encrypt: true,
+    encrypt: false,
     trustServerCertificate: true,
-    connectTimeout: 8000
+    connectTimeout: 3500
   }
 };
 
@@ -148,41 +153,38 @@ async function runDbMigrations(poolConnection: mssql.ConnectionPool) {
 
 // Global Connect helper
 async function getDbConnection(): Promise<mssql.ConnectionPool | null> {
-  if (pool) return pool;
+  if (pool && pool.connected) return pool;
+
+  if (pool) {
+    try {
+      await pool.close();
+    } catch {
+      // ignore
+    }
+    pool = null;
+  }
+
   if (!dbConfig.server || !dbConfig.user) {
     isLocalFallback = true;
     connectionErrorDetails = "Las variables de entorno de SQL Server no están completamente configuradas (DB_SERVER o DB_USER vacíos).";
     return null;
   }
+
   try {
-    console.log(`[Database] Attempting connection to ${dbConfig.server}:${dbConfig.port} (database: ${dbConfig.database}, user: ${dbConfig.user}) with encrypt=true...`);
-    pool = await mssql.connect(dbConfig);
+    console.log(`[Database] Attempting connection to ${dbConfig.server}:${dbConfig.port} (database: ${dbConfig.database}, user: ${dbConfig.user}) with encrypt=false...`);
+    const newPool = new mssql.ConnectionPool(dbConfig);
+    await newPool.connect();
+    pool = newPool;
     isLocalFallback = false;
     connectionErrorDetails = "";
     await runDbMigrations(pool);
     return pool;
   } catch (err: any) {
-    console.log("[Database] Connection failed with encrypt=true, trying with encrypt=false... Note: This is normal when offline or behind a firewalled network.");
-    try {
-      const nonEncryptedConfig = {
-        ...dbConfig,
-        options: {
-          ...dbConfig.options,
-          encrypt: false
-        }
-      };
-      pool = await mssql.connect(nonEncryptedConfig);
-      isLocalFallback = false;
-      connectionErrorDetails = "";
-      await runDbMigrations(pool);
-      return pool;
-    } catch (retryErr: any) {
-      console.log("[Database] Remote SQL Server connection could not be established. Running in robust Local/InMemory Fallback mode. Details: " + (retryErr?.message || String(retryErr)));
-      pool = null;
-      isLocalFallback = true;
-      connectionErrorDetails = "Error de conexión SQL Server: " + (retryErr?.message || String(retryErr));
-      return null;
-    }
+    console.log("[Database] Connection to SQL Server failed. Running in robust Fallback mode. Details: " + err.message);
+    pool = null;
+    isLocalFallback = true;
+    connectionErrorDetails = "Error de conexión SQL Server: " + err.message;
+    return null;
   }
 }
 
@@ -195,8 +197,6 @@ dns.lookup("dataepis.uandina.pe", (err, address) => {
     console.log(`[Diagnostics] DNS Lookup for dataepis.uandina.pe succeeded! IP: ${address}`);
   }
 });
-
-getDbConnection();
 
 // Status Check Endpoint (provides the user with visual indicators whether remote SQL Server is linked or in fallback Mode)
 app.get("/api/db-status", async (req, res) => {
